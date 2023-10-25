@@ -1,0 +1,11 @@
+numpy
+scipy
+open3d
+libigl
+transforms3d
+trimesh
+matplotlib
+pythreejs
+pyglet<2
+IPython
+git+https://github.com/skoch9/meshplot.git
