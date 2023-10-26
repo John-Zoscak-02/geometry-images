@@ -4,21 +4,22 @@ import igl
 import trimesh as tri
 from IPython.core.display import display, HTML
 
-random.seed(42)
+SEED = 27
+random.seed(SEED)
 
 data_dir = "data/"
-#files = ["ChineseLion.obj",
-#         "Femur.obj",
-#         "Foot.obj",
-#         "Hat.obj",
-#         "HumanBrain.obj",
-#         "HumanFace.obj",
-#         "Nefertiti.obj",
-#         "OldMan.obj",
-#         "StanfordBunny.obj",
-#         "spot_triangulated.obj"]
+files = ["ChineseLion.obj",
+         "Femur.obj",
+         "Foot.obj",
+         "Hat.obj",
+         "HumanBrain.obj",
+         "HumanFace.obj",
+         "Nefertiti.obj",
+         "OldMan.obj",
+         "StanfordBunny.obj",
+         "spot_triangulated.obj"]
 #files = ["StanfordBunny.obj"]
-files = ["spot_triangulated.obj"]
+#files = ["spot_triangulated.obj"]
 
 def display_cut(vertex_positions, indicies, full_cut):
     trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies) 
