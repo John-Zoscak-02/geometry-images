@@ -13,14 +13,14 @@ random.seed(SEED)
 data_dir = "data/"
 files = [
 #    "beetle.obj",
-    #"ChineseLion.obj",
-    #"Femur.obj",
-    #"Foot.obj",
+    "ChineseLion.obj",
+    "Femur.obj",
+    "Foot.obj",
     #"happy.obj",
-    #"Hat.obj",
-    #"HumanBrain.obj",
-    #"HumanFace.obj",
-    #"Nefertiti.obj",
+    "Hat.obj",
+    "HumanBrain.obj",
+    "HumanFace.obj",
+    "Nefertiti.obj",
     "OldMan.obj",
 #    "rocker-arm.obj",
 #    "spot_triangulated.obj"
@@ -98,7 +98,8 @@ if __name__ == '__main__' :
 
         colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=cut)
 
-        cut = np.array(cut[0])
+        #cut = np.array(cut[0])
+        cut = np.array(boundary)
         # Map the cut verticies to a circle for the parameterization
         cut_uv = igl.map_vertices_to_circle(vertex_positions, cut)
 
