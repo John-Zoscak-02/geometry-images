@@ -14,17 +14,17 @@ data_dir = "data/"
 files = [
 #    "beetle.obj",
     "ChineseLion.obj",
-    "Femur.obj",
-    "Foot.obj",
+    #"Femur.obj",
+    #"Foot.obj",
     #"happy.obj",
-    "Hat.obj",
-    "HumanBrain.obj",
-    "HumanFace.obj",
-    "Nefertiti.obj",
-    "OldMan.obj",
+    #"Hat.obj",
+    #"HumanBrain.obj",
+    #"HumanFace.obj",
+    #"Nefertiti.obj",
+    #"OldMan.obj",
 #    "rocker-arm.obj",
 #    "spot_triangulated.obj"
-    "StanfordBunny.obj",
+    #"StanfordBunny.obj",
 #    "xyzrgb_dragon.obj"
 ]
 #files = ["StanfordBunny.obj"]
@@ -65,6 +65,7 @@ def combine_cut(full_cut):
 
     t = loops[0]
     del loops[0]
+    #print("first loop: ", t)
     c = 0
     # Circulate the current loop
     while c < len(t):
@@ -77,43 +78,47 @@ def combine_cut(full_cut):
 
         c += 1
         if(idx!=-1):
+            #print("Located path out of loop circulation at ", c)
             # Add that path
             t[c:c] = p[1:]
-            c += len(p)
-            # Choose a loop to begin circulating 
-            for i, l in enumerate(loops):
-                if l[0] == p[-1]:
-                    del loops[i]
-                    break
-            c+=1
-            t[c:c] = l[1:]
-     return np.array(t)
+            #print("path: ", p)
+            c += len(p) - 1
+            # Choose a loop to begin circulating if there are more loops that need to be circulated.  
+            if (len(loops) > 0):
+                for i, l in enumerate(loops):
+                    if l[0] == p[-1]:
+                        del loops[i]
+                        break
+                t[c:c] = l[1:]
+                #print("New loop circulation started at: ", c)
+                #print("new loop: ", l)
 
+    return np.array(t)
 
-def get_cut_mask(v, f, full_cut): 
-    cut_edges = set() 
-    for cut in full_cut:
-        cut_len = len(cut)
-        for i in range(cut_len-1):
-            edge = (cut[i], cut[i+1])
-            if (edge[0] > edge[1]) : edge=(cut[i+1], cut[i])
-            cut_edges.add(edge)
+#def get_cut_mask(v, f, full_cut): 
+#    cut_edges = set() 
+#    for cut in full_cut:
+#        cut_len = len(cut)
+#        for i in range(cut_len-1):
+#            edge = (cut[i], cut[i+1])
+#            if (edge[0] > edge[1]) : edge=(cut[i+1], cut[i])
+#            cut_edges.add(edge)
     
-    num_faces = len(f)
-    cut_mask = np.zeros((num_faces, 3), dtype=int)
-    for i in range(num_faces):
-        e0 = (f[i][0], f[i][1])
-        e1 = (f[i][1], f[i][2])
-        e2 = (f[i][2], f[i][0])
-        if (e0[0]>e0[1]) : e0=(f[i][1],f[i][0])
-        if (e1[0]>e1[1]) : e1=(f[i][2],f[i][1])
-        if (e2[0]>e2[1]) : e2=(f[i][0],f[i][2])
+#    num_faces = len(f)
+#    cut_mask = np.zeros((num_faces, 3), dtype=int)
+#    for i in range(num_faces):
+#        e0 = (f[i][0], f[i][1])
+#        e1 = (f[i][1], f[i][2])
+#        e2 = (f[i][2], f[i][0])
+#        if (e0[0]>e0[1]) : e0=(f[i][1],f[i][0])
+#        if (e1[0]>e1[1]) : e1=(f[i][2],f[i][1])
+#        if (e2[0]>e2[1]) : e2=(f[i][0],f[i][2])
         
-        if (e0 != cut_edges): cut_mask[i][0]=1
-        if (e1 != cut_edges): cut_mask[i][1]=1
-        if (e2 != cut_edges): cut_mask[i][2]=1
+#        if (e0 != cut_edges): cut_mask[i][0]=1
+#        if (e1 != cut_edges): cut_mask[i][1]=1
+#        if (e2 != cut_edges): cut_mask[i][2]=1
 
-    return np.array(cut_mask)
+#    return np.array(cut_mask)
 
 def display_parameterized_geometry(vertex_positions, indicies, colors) :
     trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies) 
@@ -125,8 +130,7 @@ def display_parameterized_geometry(vertex_positions, indicies, colors) :
     #path = tri.path.path.Path3D(entities=d['entities'], verticies=d['vertices'])
 
     scene = tri.Scene(trimesh)
-    scene.show(flags = {'wireframe':True, 'cull': False}, 
-               line_settings={'line_width': 1.5})
+    scene.show(flags = {'wireframe':True, 'cull': False}, line_settings={'line_width': 1.5} )
 
 if __name__ == '__main__' :
     #n = int(input("What size geometry image would you like? "))
@@ -160,20 +164,20 @@ if __name__ == '__main__' :
             cut_verticies = vertex_positions[sub_cut]
             print("cut head: \n", sub_cut[:1], sub_cut[-1:], "\nlen: ", len(sub_cut))
             #print("cut points: \n", cut_verticies[:1], cut_verticies[-1:])
-            #print("cut lines head: \n", np.array(tuple(zip(cut_verticies[:-1][:1], cut_verticies[1:][:1]))), np.array(tuple(zip(cut_verticies[:-1][:1], cut_verticies[1:][-1:]))))
+            #print("cut lines head: \n", np.array(tuple(zi(cut_verticies[:-1][:1], cut_verticies[1:][:1]))), np.array(tuple(zip(cut_verticies[:-1][:1], cut_verticies[1:][-1:]))))
 
         colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=cut)
 
-        cut_mask = get_cut_mask(vertex_positions, indicies, cut)
+        #cut_mask = get_cut_mask(vertex_positions, indicies, cut)
 
-        vcut, fcut = igl.cut_mesh(vertex_positions, indicies, cut_mask)
-        trimesh = tri.Trimesh(vertices=vcut, faces=fcut)
-        M = np.sum(np.mean(vertex_positions[indicies], axis=1), axis=1)
-        colors = tri.visual.interpolate(M, color_map='viridis')
-        trimesh.visual.face_colors = colors
+        #vcut, fcut = igl.cut_mesh(vertex_positions, indicies, cut_mask)
+        #trimesh = tri.Trimesh(vertices=vcut, faces=fcut)
+        #M = np.sum(np.mean(vertex_positions[indicies], axis=1), axis=1)
+        #colors = tri.visual.interpolate(M, color_map='viridis')
+        #trimesh.visual.face_colors = colors
 
-        scene = tri.Scene(trimesh)
-        scene.show(flags = {'cull': False})
+        #scene = tri.Scene(trimesh)
+        #scene.show(flags = {'cull': False})
 
         #print("boundary: ", boundary)
         #print("cut: ", cut)
@@ -181,11 +185,13 @@ if __name__ == '__main__' :
         #cut = boundary
         # Map the cut verticies to a circle for the parameterization
         cut = combine_cut(cut)
-        cut_uv = igl.map_vertices_to_circle(vcut, np.array(cut))
-        print(cut_uv)
+        #print("after: ", cut)
+        cut_uv = igl.map_vertices_to_circle(vertex_positions, np.array(cut))
+        print("cut_uv: ", len(cut_uv))
 
         # Create a harmonic parameterization for the inner verticies of the parameterized representation
-        uv = igl.harmonic_weights( vcut, fcut, cut, cut_uv, 1)
+        uv = igl.harmonic( vertex_positions, indicies, cut, cut_uv, 1)
+        print("ran harmonic")
         vertex_positions_p = np.hstack([uv, np.zeros((uv.shape[0],1))])
 
         display_parameterized_geometry(vertex_positions=vertex_positions_p, indicies=indicies, colors=colors)
