@@ -53,6 +53,68 @@ def display_cut(vertex_positions, indicies, full_cut):
 
     return colors
 
+def combine_cut(full_cut):
+    paths = [] 
+    loops = []
+    for i in range(len(full_cut)) :
+        if full_cut[i][0] != full_cut[i][-1] :
+            paths.append(full_cut[i])
+            paths.append(list(reversed(full_cut[i])))
+        else :
+            loops.append(full_cut[i])
+
+    t = loops[0]
+    del loops[0]
+    c = 0
+    # Circulate the current loop
+    while c < len(t):
+        # Choose a path that can be taken out of current loop circulatoin
+        idx = -1
+        for i, p in enumerate(paths):
+            if paths[i][0] == t[c]: 
+                del paths[i]
+                idx = i
+
+        c += 1
+        if(idx!=-1):
+            # Add that path
+            t[c:c] = p[1:]
+            c += len(p)
+            # Choose a loop to begin circulating 
+            for i, l in enumerate(loops):
+                if l[0] == p[-1]:
+                    del loops[i]
+                    break
+            c+=1
+            t[c:c] = l[1:]
+     return np.array(t)
+
+
+def get_cut_mask(v, f, full_cut): 
+    cut_edges = set() 
+    for cut in full_cut:
+        cut_len = len(cut)
+        for i in range(cut_len-1):
+            edge = (cut[i], cut[i+1])
+            if (edge[0] > edge[1]) : edge=(cut[i+1], cut[i])
+            cut_edges.add(edge)
+    
+    num_faces = len(f)
+    cut_mask = np.zeros((num_faces, 3), dtype=int)
+    for i in range(num_faces):
+        e0 = (f[i][0], f[i][1])
+        e1 = (f[i][1], f[i][2])
+        e2 = (f[i][2], f[i][0])
+        if (e0[0]>e0[1]) : e0=(f[i][1],f[i][0])
+        if (e1[0]>e1[1]) : e1=(f[i][2],f[i][1])
+        if (e2[0]>e2[1]) : e2=(f[i][0],f[i][2])
+        
+        if (e0 != cut_edges): cut_mask[i][0]=1
+        if (e1 != cut_edges): cut_mask[i][1]=1
+        if (e2 != cut_edges): cut_mask[i][2]=1
+
+    return np.array(cut_mask)
+
 def display_parameterized_geometry(vertex_positions, indicies, colors) :
     trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies) 
     trimesh.visual.face_colors = colors
@@ -76,41 +138,54 @@ if __name__ == '__main__' :
 
         print("filename: ", file)
         print("vertex_pos shape: ", vertex_positions.shape) 
-        print("vertex_pos head: \n", vertex_positions[:10])
+        #print("vertex_pos head: \n", vertex_positions[:10])
         print("indicies shape: ", indicies.shape)
-        print("indicies head: \n", indicies[:10])
+        #print("indicies head: \n", indicies[:10])
         
         boundary = igl.boundary_loop(indicies)
         #print("boundary length: ", len(boundary))
 
-        seed_removed_indicies = indicies
-        #seed_removed_indicies = np.delete(indicies, random.randint(0, len(indicies)), axis=0)
-        #if len(boundary) == 0:
-        #    seed_removed_indicies = np.delete(seed_removed_indicies, random.randint(0, len(seed_removed_indicies)), axis=0)
+        rand = random.randint(0, len(indicies))
+        seed_triangle_1 = indicies[rand] 
+        seed_removed_indicies = np.delete(indicies, rand, axis=0)
+        seed_triangle_2 = None
+        if len(boundary) == 0:
+            rand = random.randint(0, len(indicies))
+            seed_triangle_2 = indicies[rand] 
+            seed_removed_indicies = np.delete(seed_removed_indicies, random.randint(0, len(seed_removed_indicies)), axis=0)
 
         cut = igl.cut_to_disk(seed_removed_indicies)
 
-        #for sub_cut in cut:
-        #    cut_verticies = vertex_positions[sub_cut]
-        #    print("cut head: \n", sub_cut[:6], sub_cut[-6:])
-        #    print("cut points: \n", cut_verticies[:6], cut_verticies[-6:])
-        #    print("cut lines head: \n", np.array(tuple(zip(cut_verticies[:-1][:6], cut_verticies[1:][:6]))), np.array(tuple(zip(cut_verticies[:-1][:6], cut_verticies[1:][-6:]))))
+        for sub_cut in cut:
+            cut_verticies = vertex_positions[sub_cut]
+            print("cut head: \n", sub_cut[:1], sub_cut[-1:], "\nlen: ", len(sub_cut))
+            #print("cut points: \n", cut_verticies[:1], cut_verticies[-1:])
+            #print("cut lines head: \n", np.array(tuple(zip(cut_verticies[:-1][:1], cut_verticies[1:][:1]))), np.array(tuple(zip(cut_verticies[:-1][:1], cut_verticies[1:][-1:]))))
 
         colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=cut)
 
-        #cut = np.array(cut[0])
-        cut = np.array(boundary)
+        cut_mask = get_cut_mask(vertex_positions, indicies, cut)
+
+        vcut, fcut = igl.cut_mesh(vertex_positions, indicies, cut_mask)
+        trimesh = tri.Trimesh(vertices=vcut, faces=fcut)
+        M = np.sum(np.mean(vertex_positions[indicies], axis=1), axis=1)
+        colors = tri.visual.interpolate(M, color_map='viridis')
+        trimesh.visual.face_colors = colors
+
+        scene = tri.Scene(trimesh)
+        scene.show(flags = {'cull': False})
+
+        #print("boundary: ", boundary)
+        #print("cut: ", cut)
+
+        #cut = boundary
         # Map the cut verticies to a circle for the parameterization
-        cut_uv = igl.map_vertices_to_circle(vertex_positions, cut)
+        cut = combine_cut(cut)
+        cut_uv = igl.map_vertices_to_circle(vcut, np.array(cut))
+        print(cut_uv)
 
         # Create a harmonic parameterization for the inner verticies of the parameterized representation
-        uv = igl.harmonic_weights(vertex_positions, indicies, cut, cut_uv, 1)
+        uv = igl.harmonic_weights( vcut, fcut, cut, cut_uv, 1)
         vertex_positions_p = np.hstack([uv, np.zeros((uv.shape[0],1))])
 
         display_parameterized_geometry(vertex_positions=vertex_positions_p, indicies=indicies, colors=colors)
-
-
-
-
-
-
