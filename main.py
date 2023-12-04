@@ -21,9 +21,9 @@ files = [
     #"happy.obj",
     "Hat.obj",
     #"HumanBrain.obj",
-    "HumanFace.obj",
+    #"HumanFace.obj",
     #"Nefertiti.obj",
-    #"OldMan.obj",
+    "OldMan.obj",
 #    "rocker-arm.obj",
 #    "spot_triangulated.obj"
     #"StanfordBunny.obj",
@@ -41,10 +41,10 @@ def display_cut(vertex_positions, indicies, full_cut):
     scene = tri.Scene(trimesh)
 
     for cut in full_cut:
-        cut_verticies = vertex_positions[cut]
+        cut_vertices = vertex_positions[cut]
         range = np.arange(0, len(cut))
         line_range= tri.path.entities.Line(points=range,color=np.array([[255,0,0,255]]))
-        path1 = tri.path.path.Path3D(entities=[line_range], vertices=cut_verticies)
+        path1 = tri.path.path.Path3D(entities=[line_range], vertices=cut_vertices)
         scene.add_geometry(path1)
 
     M = np.sum(np.mean(vertex_positions[indicies], axis=1), axis=1)
@@ -141,9 +141,7 @@ def remove_triangles_adjacent_to_path(indicies, cut):
                 v = sub_cut[i]
                 adjacent_triangle_indicies = np.where(np.sum(indicies==v, axis=1)>0)[0]
                 rmi.update(adjacent_triangle_indicies)
-            print(list(rmi))
             indicies = np.delete(indicies, list(rmi), axis=0)
-
             #edges = get_edges_from_path(sub_cut)
             #adj_index = trimesh.face_adjacency_edges_tree.query(edges)[1]
             #print(adj_index)
@@ -191,14 +189,15 @@ if __name__ == '__main__' :
         cut = igl.cut_to_disk(seed_removed_indicies)
 
         for sub_cut in cut:
-            cut_verticies = vertex_positions[sub_cut]
+            cut_vertices = vertex_positions[sub_cut]
             print("cut head: \n", sub_cut[:1], sub_cut[-1:], "\nlen: ", len(sub_cut))
-            #print("cut points: \n", cut_verticies[:1], cut_verticies[-1:])
-            #print("cut lines head: \n", np.array(tuple(zi(cut_verticies[:-1][:1], cut_verticies[1:][:1]))), np.array(tuple(zip(cut_verticies[:-1][:1], cut_verticies[1:][-1:])))
+            #print("cut points: \n", cut_vertices[:1], cut_vertices[-1:])
+            #print("cut lines head: \n", np.array(tuple(zi(cut_vertices[:-1][:1], cut_vertices[1:][:1]))), np.array(tuple(zip(cut_vertices[:-1][:1], cut_vertices[1:][-1:])))
 
         # DISPLAY CUT
         #colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=cut)
 
+        
         #combined_cut = combine_cut(cut)
         #print("transforming cut")
         #cut = transform_cut(combined_cut, indicies)
@@ -209,9 +208,24 @@ if __name__ == '__main__' :
         #trimesh.visual.face_colors = colors
         #scene = tri.Scene(trimesh)
         #scene.show(flags = {'cull': False})
+        #bnd=cut 
+        #bnd_uv = []
+        #bnd_uv.extend(zip(repeat(1.0), np.linspace(0, 1, int(len(bnd)/8), endpoint=False)))
+        #bnd_uv.extend(zip(np.linspace(1, -1, int(len(bnd)/4 + len(bnd)%4), endpoint=False), repeat(1.0)))
+        #bnd_uv.extend(zip(repeat(-1.0), np.linspace(1, -1, int(len(bnd)/4), endpoint=False)))
+        #bnd_uv.extend(zip(np.linspace(-1, 1, len(bnd)-len(bnd_uv)-int(len(bnd)/8), endpoint=False), repeat(-1.0)))
+        #bnd_uv.extend(zip(repeat(1.0), np.linspace(-1, 0, int(len(bnd)/8), endpoint=False)))
+        #bnd_uv = np.array(bnd_uv)
 
-        #indicies = remove_triangles_adjacent_to_path(indicies, cut)
-        #trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies)
+        #uv = igl.harmonic(vcut, fcut, cut, bnd_uv,1)
+        #vcut = np.hstack([uv, np.zeros((uv.shape[0], 1))])
+        #display_parameterized_geometry(vcut, fcut, colors=colors)
+
+        indicies = remove_triangles_adjacent_to_path(indicies, cut)
+        trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies)
+        trimesh.remove_unreferenced_vertices()
+        vertex_positions = trimesh.vertices
+        indicies = trimesh.faces
         #M = np.sum(np.mean(vertex_positions[indicies], axis=1), axis=1)
         #colors = tri.visual.interpolate(M, color_map='viridis')
         #trimesh.visual.face_colors = colors
@@ -219,6 +233,8 @@ if __name__ == '__main__' :
         #scene.show(flags = {'cull': False})
 
         bnd = igl.boundary_loop(indicies)
+        #bnd = combine_cut(cut)
+        print(bnd)
         colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=[bnd])
         #bnd_uv = igl.map_vertices_to_circle(vertex_positions, bnd)
         #print(len(bnd))
@@ -234,8 +250,12 @@ if __name__ == '__main__' :
         bnd_uv.extend(zip(repeat(1.0), np.linspace(-1, 0, int(len(bnd)/8), endpoint=False)))
         bnd_uv = np.array(bnd_uv)
 
-        # Create a harmonic parameterization for the inner verticies of the parameterized representation
+        # Create a harmonic parameterization for the inner vertices of the parameterized representation
+        print("running harmonic")
         uv = igl.harmonic(vertex_positions, indicies, bnd, bnd_uv, 1)
+        #uv = igl.lscm(vertex_positions, indicies, bnd, bnd_uv)
+        #print(uv_h)
+        print(uv)
         print("ran harmonic")
         vertex_positions_p = np.hstack([uv, np.zeros((uv.shape[0],1))])
 
