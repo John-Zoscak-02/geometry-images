@@ -6,6 +6,8 @@ import trimesh as tri
 import igl
 from matplotlib.colors import LinearSegmentedColormap
 import pyglet
+import math
+from itertools import repeat
 
 SEED = 27
 random.seed(SEED)
@@ -13,13 +15,13 @@ random.seed(SEED)
 data_dir = "data/"
 files = [
 #    "beetle.obj",
-    #"ChineseLion.obj",
-    #"Femur.obj",
+    "ChineseLion.obj",
+    "Femur.obj",
     #"Foot.obj",
     #"happy.obj",
-    #"Hat.obj",
-    "HumanBrain.obj",
-    #"HumanFace.obj",
+    "Hat.obj",
+    #"HumanBrain.obj",
+    "HumanFace.obj",
     #"Nefertiti.obj",
     #"OldMan.obj",
 #    "rocker-arm.obj",
@@ -130,19 +132,35 @@ def transform_cut(combined_cut, faces):
 
     return cut
 
+def remove_triangles_adjacent_to_path(indicies, cut):
+    #trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies)
+    for sub_cut in cut:
+        if (sub_cut[0] != sub_cut[-1]): 
+            rmi = set()
+            for i in range(len(sub_cut)):
+                v = sub_cut[i]
+                adjacent_triangle_indicies = np.where(np.sum(indicies==v, axis=1)>0)[0]
+                rmi.update(adjacent_triangle_indicies)
+            print(list(rmi))
+            indicies = np.delete(indicies, list(rmi), axis=0)
 
+            #edges = get_edges_from_path(sub_cut)
+            #adj_index = trimesh.face_adjacency_edges_tree.query(edges)[1]
+            #print(adj_index)
+
+            #faces = trimesh.face_adjacency[adj_index]
+            
+            #print("indicies before: ", indicies.shape)
+            #indicies = np.delete(trimesh.faces, faces, axis=0)
+            #print("indicies after: ", indicies.shape)
+    
+    return indicies
 
 def display_parameterized_geometry(vertex_positions, indicies, colors) :
     trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies) 
     trimesh.visual.face_colors = colors
-
-    #print(len(trimesh.face_adjacency))
-    ## get a Path3D object for the edges we want to highlight
-    #d = tri.path.exchange.misc.faces_to_path(trimesh)
-    #path = tri.path.path.Path3D(entities=d['entities'], verticies=d['vertices'])
-
     scene = tri.Scene(trimesh)
-    scene.show(flags = {'wireframe':True, 'cull': False}, line_settings={'line_width': 1.5} )
+    scene.show(flags = {'wireframe':True, 'cull': False}, line_settings={'line_width': 0.5} )
 
 if __name__ == '__main__' :
     #n = int(input("What size geometry image would you like? "))
@@ -178,53 +196,43 @@ if __name__ == '__main__' :
             #print("cut points: \n", cut_verticies[:1], cut_verticies[-1:])
             #print("cut lines head: \n", np.array(tuple(zi(cut_verticies[:-1][:1], cut_verticies[1:][:1]))), np.array(tuple(zip(cut_verticies[:-1][:1], cut_verticies[1:][-1:])))
 
-        colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=cut)
+        # DISPLAY CUT
+        #colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=cut)
 
         #combined_cut = combine_cut(cut)
         #print("transforming cut")
         #cut = transform_cut(combined_cut, indicies)
-
         #vcut, fcut = igl.cut_mesh(vertex_positions, indicies, cut)
         #trimesh = tri.Trimesh(vertices=vcut, faces=fcut)
         #M = np.sum(np.mean(vertex_positions[indicies], axis=1), axis=1)
         #colors = tri.visual.interpolate(M, color_map='viridis')
         #trimesh.visual.face_colors = colors
-
         #scene = tri.Scene(trimesh)
         #scene.show(flags = {'cull': False})
 
-        trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies)
-        for sub_cut in cut:
-            if (sub_cut[0] != sub_cut[-1]): 
-                rmi = set()
-                for i in range(len(sub_cut)):
-                    v = sub_cut[i]
-                    adjacent_triangle_indicies = np.where(np.sum(indicies==v, axis=1)>0)[0]
-                    rmi.update(adjacent_triangle_indicies)
-                #print(list(rmi))
-                indicies = np.delete(indicies, list(rmi), axis=0)
-
-                #edges = get_edges_from_path(sub_cut)
-                #adj_index = trimesh.face_adjacency_edges_tree.query(edges)[1]
-                #print(adj_index)
-
-                #faces = trimesh.face_adjacency[adj_index]
-                
-                #print("indicies before: ", indicies.shape)
-                #indicies = np.delete(trimesh.faces, faces, axis=0)
-                #print("indicies after: ", indicies.shape)
-
-        trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies)
-        M = np.sum(np.mean(vertex_positions[indicies], axis=1), axis=1)
-        colors = tri.visual.interpolate(M, color_map='viridis')
-        trimesh.visual.face_colors = colors
-
-        scene = tri.Scene(trimesh)
-        scene.show(flags = {'cull': False})
+        #indicies = remove_triangles_adjacent_to_path(indicies, cut)
+        #trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies)
+        #M = np.sum(np.mean(vertex_positions[indicies], axis=1), axis=1)
+        #colors = tri.visual.interpolate(M, color_map='viridis')
+        #trimesh.visual.face_colors = colors
+        #scene = tri.Scene(trimesh)
+        #scene.show(flags = {'cull': False})
 
         bnd = igl.boundary_loop(indicies)
-        display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=[bnd])
-        bnd_uv = igl.map_vertices_to_circle(vertex_positions, bnd)
+        colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=[bnd])
+        #bnd_uv = igl.map_vertices_to_circle(vertex_positions, bnd)
+        #print(len(bnd))
+        #print((bnd_uv))
+        #bnd_uv = np.array([circle_to_square(p[0],p[1]) for p in bnd_uv ])
+        #print(bnd_uv)
+
+        bnd_uv = []
+        bnd_uv.extend(zip(repeat(1.0), np.linspace(0, 1, int(len(bnd)/8), endpoint=False)))
+        bnd_uv.extend(zip(np.linspace(1, -1, int(len(bnd)/4 + len(bnd)%4), endpoint=False), repeat(1.0)))
+        bnd_uv.extend(zip(repeat(-1.0), np.linspace(1, -1, int(len(bnd)/4), endpoint=False)))
+        bnd_uv.extend(zip(np.linspace(-1, 1, len(bnd)-len(bnd_uv)-int(len(bnd)/8), endpoint=False), repeat(-1.0)))
+        bnd_uv.extend(zip(repeat(1.0), np.linspace(-1, 0, int(len(bnd)/8), endpoint=False)))
+        bnd_uv = np.array(bnd_uv)
 
         # Create a harmonic parameterization for the inner verticies of the parameterized representation
         uv = igl.harmonic(vertex_positions, indicies, bnd, bnd_uv, 1)
@@ -232,3 +240,8 @@ if __name__ == '__main__' :
         vertex_positions_p = np.hstack([uv, np.zeros((uv.shape[0],1))])
 
         display_parameterized_geometry(vertex_positions=vertex_positions_p, indicies=indicies, colors=colors)
+
+        #trimesh = tri.Trimesh(vertices=vertex_positions_p, faces=indicies) 
+        #trimesh.visual.face_colors = colors
+        #scene = tri.Scene(trimesh)
+        #scene.show(flags = {'cull': False})
