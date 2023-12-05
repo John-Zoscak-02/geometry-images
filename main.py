@@ -1,31 +1,26 @@
-import os
 import numpy as np
-import scipy as sp
 import random
 import trimesh as tri
 import igl
-from matplotlib.colors import LinearSegmentedColormap
-import pyglet
-import math
 from itertools import repeat
 
-SEED = 27
+SEED = 42
 random.seed(SEED)
 
 data_dir = "data/"
 files = [
 #    "beetle.obj",
     "ChineseLion.obj",
-    "Femur.obj",
+    #"Femur.obj",
     #"Foot.obj",
     #"happy.obj",
-    "Hat.obj",
-    #"HumanBrain.obj",
+    #"Hat.obj",
+    "HumanBrain.obj",
     #"HumanFace.obj",
     #"Nefertiti.obj",
     "OldMan.obj",
-#    "rocker-arm.obj",
-#    "spot_triangulated.obj"
+    #"rocker-arm.obj",
+    "spot_triangulated.obj"
     #"StanfordBunny.obj",
 #    "xyzrgb_dragon.obj"
 ]
@@ -161,9 +156,10 @@ def display_parameterized_geometry(vertex_positions, indicies, colors) :
     scene.show(flags = {'wireframe':True, 'cull': False}, line_settings={'line_width': 0.5} )
 
 if __name__ == '__main__' :
-    #n = int(input("What size geometry image would you like? "))
-
     for file in files:
+        num_cuts = int(input("Number of additional cuts: "))
+
+        #================================== Data analysis ================================#
         # Read in the vertex positions of the geometry
         # Read in the indicies of the triangle mesh 
         vertex_positions, indicies = igl.read_triangle_mesh("%s%s"%(data_dir, file))
@@ -173,18 +169,23 @@ if __name__ == '__main__' :
         #print("vertex_pos head: \n", vertex_positions[:10])
         print("indicies shape: ", indicies.shape)
         #print("indicies head: \n", indicies[:10])
-        
+        #==================================#
+
+        #================================== Display Cut ================================#
         boundary = igl.boundary_loop(indicies)
         #print("boundary length: ", len(boundary))
 
-        rand = random.randint(0, len(indicies))
-        seed_triangle_1 = indicies[rand] 
-        seed_removed_indicies = np.delete(indicies, rand, axis=0)
-        seed_triangle_2 = None
-        if len(boundary) == 0:
-            rand = random.randint(0, len(indicies))
-            seed_triangle_2 = indicies[rand] 
-            seed_removed_indicies = np.delete(seed_removed_indicies, random.randint(0, len(seed_removed_indicies)), axis=0)
+        if len(boundary) == 0: num_cuts+=1
+
+        curvature = igl.gaussian_curvature(vertex_positions, indicies)
+        print("Gaussian curvature: ", curvature.shape)
+        curvature = np.absolute(curvature)
+        max_inds = np.argpartition(curvature, -(num_cuts+len(boundary)))[:num_cuts]
+        print(max_inds)
+
+        for max_ind in max_inds:
+            seed_triangle_idx = np.where(np.sum(indicies==max_ind, axis=1)>0)[0]
+            seed_removed_indicies = np.delete(indicies, seed_triangle_idx, axis=0)
 
         cut = igl.cut_to_disk(seed_removed_indicies)
 
@@ -194,10 +195,41 @@ if __name__ == '__main__' :
             #print("cut points: \n", cut_vertices[:1], cut_vertices[-1:])
             #print("cut lines head: \n", np.array(tuple(zi(cut_vertices[:-1][:1], cut_vertices[1:][:1]))), np.array(tuple(zip(cut_vertices[:-1][:1], cut_vertices[1:][-1:])))
 
-        # DISPLAY CUT
-        #colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=cut)
-
+        colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=cut)
+        #==================================#
         
+        #================================== Display simple 2D parameterization ================================#
+        #bnd = igl.boundary_loop(indicies)
+        ##bnd = combine_cut(cut)
+        ##print(bnd)
+        ##colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=[bnd])
+        ##bnd_uv = igl.map_vertices_to_circle(vertex_positions, bnd)
+        ##print(len(bnd))
+        ##print((bnd_uv))
+        ##bnd_uv = np.array([circle_to_square(p[0],p[1]) for p in bnd_uv ])
+        ##print(bnd_uv)
+
+        #bnd_uv = []
+        #bnd_uv.extend(zip(repeat(1.0), np.linspace(0, 1, int(len(bnd)/8), endpoint=False)))
+        #bnd_uv.extend(zip(np.linspace(1, -1, int(len(bnd)/4 + len(bnd)%4), endpoint=False), repeat(1.0)))
+        #bnd_uv.extend(zip(repeat(-1.0), np.linspace(1, -1, int(len(bnd)/4), endpoint=False)))
+        #bnd_uv.extend(zip(np.linspace(-1, 1, len(bnd)-len(bnd_uv)-int(len(bnd)/8), endpoint=False), repeat(-1.0)))
+        #bnd_uv.extend(zip(repeat(1.0), np.linspace(-1, 0, int(len(bnd)/8), endpoint=False)))
+        #bnd_uv = np.array(bnd_uv)
+
+        ## Create a harmonic parameterization for the inner vertices of the parameterized representation
+        #print("running harmonic")
+        #uv = igl.harmonic(vertex_positions, indicies, bnd, bnd_uv, 1)
+        ##uv = igl.lscm(vertex_positions, indicies, bnd, bnd_uv)
+        ##print(uv_h)
+        #print(uv)
+        #print("ran harmonic")
+        #vertex_positions_p = np.hstack([uv, np.zeros((uv.shape[0],1))])
+
+        #display_parameterized_geometry(vertex_positions=vertex_positions_p, indicies=indicies, colors=colors)
+        #==================================#
+        
+        #================================== Trying combining the cut and doing cut_mesh ================================#
         #combined_cut = combine_cut(cut)
         #print("transforming cut")
         #cut = transform_cut(combined_cut, indicies)
@@ -220,7 +252,9 @@ if __name__ == '__main__' :
         #uv = igl.harmonic(vcut, fcut, cut, bnd_uv,1)
         #vcut = np.hstack([uv, np.zeros((uv.shape[0], 1))])
         #display_parameterized_geometry(vcut, fcut, colors=colors)
+        #==================================#
 
+        #================================== Try removing adjacent triangles ================================#
         indicies = remove_triangles_adjacent_to_path(indicies, cut)
         trimesh = tri.Trimesh(vertices=vertex_positions, faces=indicies)
         trimesh.remove_unreferenced_vertices()
@@ -234,7 +268,7 @@ if __name__ == '__main__' :
 
         bnd = igl.boundary_loop(indicies)
         #bnd = combine_cut(cut)
-        print(bnd)
+        #print(bnd)
         colors = display_cut(vertex_positions=vertex_positions, indicies=indicies, full_cut=[bnd])
         #bnd_uv = igl.map_vertices_to_circle(vertex_positions, bnd)
         #print(len(bnd))
@@ -260,8 +294,11 @@ if __name__ == '__main__' :
         vertex_positions_p = np.hstack([uv, np.zeros((uv.shape[0],1))])
 
         display_parameterized_geometry(vertex_positions=vertex_positions_p, indicies=indicies, colors=colors)
+        #==================================#
 
+        #================================== Display non-wireframe parameterization ================================#
         #trimesh = tri.Trimesh(vertices=vertex_positions_p, faces=indicies) 
         #trimesh.visual.face_colors = colors
         #scene = tri.Scene(trimesh)
         #scene.show(flags = {'cull': False})
+        #==================================#
